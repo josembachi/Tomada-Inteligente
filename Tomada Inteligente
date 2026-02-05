@@ -1,0 +1,106 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+//#include <WiFi.h>
+#include <BluetoothSerial.h>
+
+#include "DHT.h"
+
+// Definições de pinos
+#define DHTPIN 15
+#define LEDPIN 4
+#define LEDPISCA 2
+#define DHTTYPE DHT11
+#define CORRENTEPIN 34
+#define TENSIONPIN 35
+#define SDA 32
+#define SCL 33
+// Instâncias de objetos
+DHT dht(DHTPIN, DHTTYPE);
+BluetoothSerial SerialBT;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Variáveis
+bool ledEstado = false;
+bool ledPiscaEstado = false;
+bool mostrar = false;
+void setup() {
+  Wire.begin(SDA, SCL);
+  Serial.begin(115200);
+  SerialBT.begin("Tomada Inteligente");
+   lcd.begin(32, 33);
+ lcd.init();
+ lcd.backlight();
+   // lcd.setCursor(1, 0);
+   //lcd.print("Tomada inteligente");
+    // lcd.setCursor(0, 1);
+       // lcd.print("       LIGADO");
+      // delay(5000);
+  dht.begin();
+  pinMode(LEDPIN, OUTPUT);
+  pinMode(LEDPISCA, OUTPUT);
+  pinMode(CORRENTEPIN, INPUT);
+  pinMode(TENSIONPIN, INPUT);
+}
+
+void loop() {
+  // Lê os dados do DHT11
+  
+   // lcd.scrollDisplayRight();
+   // delay(10); 
+  
+  float temperatura = dht.readTemperature();
+  float umidade = dht.readHumidity();
+
+  // Lê a corrente e tensão
+  float corrente = (analogRead(CORRENTEPIN) * 180.0 / 4095.0) * 10; 
+  float tensao = (analogRead(TENSIONPIN) * 105.0 / 4095.0) * 2; 
+
+  // Envia os dados via Bluetooth
+  if (SerialBT.available()) {
+    char comando = SerialBT.read();
+    if (comando == '1') {
+      ledEstado = true;
+      digitalWrite(LEDPIN, HIGH);
+    } else if (comando == '0') {
+      ledEstado = false;
+      digitalWrite(LEDPIN, LOW);
+    } else if (comando == 't') {
+      SerialBT.println("Temperatura: " + String(temperatura) + "°C");
+      SerialBT.println("Corrente: " + String(corrente) + "A");
+      SerialBT.println("Tensão: " + String(tensao) + "V");
+      
+    }
+ 
+    
+  }
+  
+
+  // Pisca a LED
+  
+  if (mostrar) {
+      
+    lcd.print("Temp.: " + String(temperatura) + "°C ");
+      lcd.setCursor(0, 1);
+    delay(3000);
+      lcd.print("Corr.: " + String(corrente) + "A");
+           lcd.setCursor(0, 0);
+       delay(500);
+      lcd.print("Tens.: " + String(tensao) + "V");
+       delay(500);
+      lcd.setCursor(0, 1);  
+      
+       
+      }
+          mostrar = !mostrar;
+      
+    if ( ledPiscaEstado) {
+    digitalWrite(LEDPISCA, HIGH);
+  } else 
+     { digitalWrite(LEDPISCA, LOW);
+  }
+ 
+  delay(500);
+  ledPiscaEstado = !ledPiscaEstado;
+
+  }
+    
